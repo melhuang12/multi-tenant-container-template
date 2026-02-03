@@ -1,0 +1,27 @@
+{
+  "name": "multi-tenant-container-template",
+  "version": "1.0.0",
+  "description": "A template for building multi-tenant platforms on Cloudflare Containers. Each tenant gets their own isolated container instance.",
+  "main": "src/index.js",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "tail": "wrangler tail",
+    "test-local": "node example-app/server.js"
+  },
+  "keywords": [
+    "cloudflare",
+    "workers",
+    "containers",
+    "durable-objects",
+    "multi-tenant",
+    "platform"
+  ],
+  "author": "Cloudflare",
+  "license": "MIT",
+  "devDependencies": {
+    "@cloudflare/containers": "^0.1.0",
+    "wrangler": "^4.62.0"
+  }
+}

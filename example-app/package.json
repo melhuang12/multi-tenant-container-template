@@ -1,0 +1,12 @@
+{
+  "name": "vibe-app-example",
+  "version": "1.0.0",
+  "description": "Example application that runs inside tenant containers",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "author": "",
+  "license": "MIT"
+}

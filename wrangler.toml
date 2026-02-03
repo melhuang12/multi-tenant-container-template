@@ -1,0 +1,123 @@
+# =============================================================================
+# Multi-Tenant Container Platform - Wrangler Configuration
+# =============================================================================
+# 
+# This configuration file tells Wrangler how to build and deploy your Worker
+# and Containers to Cloudflare.
+#
+# DOCUMENTATION:
+# - Wrangler Config: https://developers.cloudflare.com/workers/wrangler/configuration/
+# - Containers: https://developers.cloudflare.com/containers/
+# - Durable Objects: https://developers.cloudflare.com/durable-objects/
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# BASIC SETTINGS
+# -----------------------------------------------------------------------------
+
+# Name of your Worker (appears in the Cloudflare dashboard)
+name = "multi-tenant-vibe-apps"
+
+# Entry point for your Worker code
+main = "src/index.js"
+
+# Compatibility date - determines which Workers runtime features are available
+# Use a recent date for access to the latest features
+compatibility_date = "2025-01-01"
+
+# -----------------------------------------------------------------------------
+# OBSERVABILITY
+# -----------------------------------------------------------------------------
+# Enable logging and tracing for debugging and monitoring
+
+[observability]
+enabled = true
+
+# -----------------------------------------------------------------------------
+# DURABLE OBJECTS CONFIGURATION
+# -----------------------------------------------------------------------------
+# Durable Objects provide:
+# - Globally unique instances addressable by ID
+# - Persistent storage (SQLite)
+# - Single-threaded execution (no race conditions)
+# - Automatic container lifecycle management (via Container class)
+
+[[durable_objects.bindings]]
+# Name used to access the DO namespace in your Worker code
+# Usage: env.VIBE_APP.getByName("my-app")
+name = "VIBE_APP"
+
+# Class name that implements the Durable Object (must be exported from main)
+class_name = "VibeAppContainer"
+
+# -----------------------------------------------------------------------------
+# MIGRATIONS
+# -----------------------------------------------------------------------------
+# Migrations are required when creating or modifying Durable Object classes
+# Each migration needs a unique tag
+
+[[migrations]]
+tag = "v1"
+# new_sqlite_classes creates DOs with SQLite storage (recommended)
+# This enables this.ctx.storage.sql for SQL queries
+new_sqlite_classes = ["VibeAppContainer"]
+
+# -----------------------------------------------------------------------------
+# CONTAINER CONFIGURATION
+# -----------------------------------------------------------------------------
+# This section configures the container that runs alongside each Durable Object
+#
+# KEY CONCEPTS:
+# - Each DO instance gets its own container
+# - Containers are created on-demand when first accessed
+# - max_instances limits total concurrent containers (for cost control)
+
+[[containers]]
+# Must match the Durable Object class_name
+class_name = "VibeAppContainer"
+
+# Identifier for this container configuration
+name = "vibe-app-container"
+
+# Path to Dockerfile (relative to wrangler.toml)
+# Wrangler will build and push this image on deploy
+image = "./Dockerfile"
+
+# Maximum number of concurrent container instances
+# This is your scaling limit - increase based on expected tenants
+# Note: Each active app = 1 container instance
+max_instances = 50
+
+# Instance type determines CPU and memory allocation
+# Options: "small", "standard", "large"
+# See: https://developers.cloudflare.com/containers/platform-details/limits/
+# instance_type = "standard"
+
+# -----------------------------------------------------------------------------
+# ENVIRONMENT VARIABLES (Optional)
+# -----------------------------------------------------------------------------
+# Variables available in your Worker code via env.VAR_NAME
+# For containers, use the [containers] env configuration instead
+
+[vars]
+PLATFORM_NAME = "Vibe Apps Platform"
+ENVIRONMENT = "production"
+
+# -----------------------------------------------------------------------------
+# CUSTOM DOMAINS (Optional)
+# -----------------------------------------------------------------------------
+# Uncomment and configure to use custom domains
+# 
+# routes = [
+#   { pattern = "*.vibeapps.com", custom_domain = true },
+#   { pattern = "vibeapps.com", custom_domain = true }
+# ]
+
+# -----------------------------------------------------------------------------
+# DEVELOPMENT SETTINGS (Optional)
+# -----------------------------------------------------------------------------
+# Settings for local development with `wrangler dev`
+
+# [dev]
+# port = 8787
+# local_protocol = "http"
