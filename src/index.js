@@ -1062,23 +1062,33 @@ function getUIHTML(baseUrl) {
     <!-- Code Example -->
     <div class="demo-section">
       <h2>The Code Behind It</h2>
-      <div class="timeline-code" style="font-size: 0.85rem; line-height: 1.6;">
-<span style="color: #a1a1aa;">// Worker entry point - routes requests to containers</span>
+      <p style="color: #a1a1aa; margin-bottom: 1rem;">
+        This is the actual Worker routing logic. The key is <code style="background: #18181b; padding: 0.2rem 0.4rem; border-radius: 4px; color: #f97316;">getByName(appId)</code> which deterministically routes to the same Durable Object/Container.
+      </p>
+      <pre style="background: #18181b; border-radius: 8px; padding: 1.5rem; overflow-x: auto; border: 1px solid #3f3f46; margin: 0;"><code style="font-family: 'Monaco', 'Menlo', 'Consolas', monospace; font-size: 0.85rem; line-height: 1.7;"><span style="color: #6b7280;">// Worker entry point (src/index.js)</span>
 <span style="color: #c084fc;">export default</span> {
-  <span style="color: #c084fc;">async</span> <span style="color: #60a5fa;">fetch</span>(request, env) {
-    <span style="color: #a1a1aa;">// Extract appId from URL: /app/{appId}/...</span>
-    <span style="color: #c084fc;">const</span> url = <span style="color: #c084fc;">new</span> <span style="color: #60a5fa;">URL</span>(request.url);
+  <span style="color: #c084fc;">async</span> <span style="color: #60a5fa;">fetch</span>(<span style="color: #f9a8d4;">request</span>, <span style="color: #f9a8d4;">env</span>) {
+    <span style="color: #6b7280;">// 1. Extract appId from URL path</span>
+    <span style="color: #c084fc;">const</span> url = <span style="color: #c084fc;">new</span> <span style="color: #22d3ee;">URL</span>(request.url);
     <span style="color: #c084fc;">const</span> match = url.pathname.<span style="color: #60a5fa;">match</span>(<span style="color: #fbbf24;">/^\\/app\\/([^\\/]+)/</span>);
-    <span style="color: #c084fc;">const</span> appId = match[<span style="color: #22c55e;">1</span>];
-    
-    <span style="color: #a1a1aa;">// Get container by name - deterministic routing!</span>
-    <span style="color: #c084fc;">const</span> container = env.VIBE_APP.<span style="color: #60a5fa;">getByName</span>(appId);
-    
-    <span style="color: #a1a1aa;">// Forward request - container auto-starts if sleeping</span>
+    <span style="color: #c084fc;">const</span> appId = match[<span style="color: #34d399;">1</span>];  <span style="color: #6b7280;">// e.g., "my-cool-app"</span>
+
+    <span style="color: #6b7280;">// 2. Get container by name - THE KEY PATTERN!</span>
+    <span style="color: #6b7280;">//    Same appId ALWAYS routes to same Durable Object</span>
+    <span style="color: #c084fc;">const</span> container = env.VIBE_APP.<span style="color: #f97316;">getByName</span>(appId);
+
+    <span style="color: #6b7280;">// 3. Forward request to container</span>
+    <span style="color: #6b7280;">//    - Auto-starts if container is sleeping</span>
+    <span style="color: #6b7280;">//    - Routes to existing container if running</span>
     <span style="color: #c084fc;">return</span> container.<span style="color: #60a5fa;">fetch</span>(request);
   }
 };
-      </div>
+
+<span style="color: #6b7280;">// Container class extends DurableObject</span>
+<span style="color: #c084fc;">export class</span> <span style="color: #22d3ee;">VibeAppContainer</span> <span style="color: #c084fc;">extends</span> <span style="color: #22d3ee;">Container</span> {
+  defaultPort = <span style="color: #34d399;">8080</span>;    <span style="color: #6b7280;">// Container listens here</span>
+  sleepAfter = <span style="color: #fbbf24;">"10m"</span>;    <span style="color: #6b7280;">// Auto-sleep after 10 min idle</span>
+}</code></pre>
     </div>
     
     <div class="footer">
