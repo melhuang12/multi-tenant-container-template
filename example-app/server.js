@@ -27,6 +27,18 @@ const path = require("path");
 const PORT = process.env.PORT || 8080;
 const APP_ID = process.env.APP_ID || "unknown";
 
+// =============================================================================
+// CONTAINER LOCATION (from Cloudflare runtime environment)
+// These are automatically set by Cloudflare when the container starts
+// =============================================================================
+const CONTAINER_LOCATION = {
+  location: process.env.CLOUDFLARE_LOCATION || "unknown",
+  country: process.env.CLOUDFLARE_COUNTRY_A2 || "unknown",
+  region: process.env.CLOUDFLARE_REGION || "unknown",
+  applicationId: process.env.CLOUDFLARE_APPLICATION_ID || "unknown",
+  durableObjectId: process.env.CLOUDFLARE_DURABLE_OBJECT_ID || "unknown",
+};
+
 // In-memory state (persists for container lifetime, resets on restart)
 // For persistent state, use external storage (R2, D1, KV, etc.)
 let requestCount = 0;
@@ -42,19 +54,13 @@ const server = http.createServer((req, res) => {
   // Get app ID from header (set by the Worker) or environment
   const appId = req.headers["x-app-id"] || APP_ID;
   
-  // Get location info from Cloudflare headers (passed through by Worker)
-  const cfColo = req.headers["cf-colo"] || req.headers["x-cf-colo"] || "unknown";
-  const cfCountry = req.headers["cf-ipcountry"] || req.headers["x-cf-country"] || "unknown";
-  const cfCity = req.headers["x-cf-city"] || "unknown";
-  const cfRegion = req.headers["x-cf-region"] || "unknown";
-  
   // Log request for debugging
-  console.log(`[${appId}] ${req.method} ${req.url} (colo: ${cfColo})`);
+  console.log(`[${appId}] ${req.method} ${req.url} (location: ${CONTAINER_LOCATION.location})`);
   
   // Set common headers
   res.setHeader("Content-Type", "application/json");
   res.setHeader("X-App-Id", appId);
-  res.setHeader("X-Container-Colo", cfColo);
+  res.setHeader("X-Container-Location", CONTAINER_LOCATION.location);
   
   // ---------------------------------------------------------------------------
   // ROUTING
@@ -68,10 +74,7 @@ const server = http.createServer((req, res) => {
     return sendJson(res, 200, {
       status: "healthy",
       appId,
-      location: {
-        colo: cfColo,
-        country: cfCountry,
-      },
+      containerLocation: CONTAINER_LOCATION,
       uptime: Math.floor((Date.now() - startTime) / 1000),
       requestCount,
     });
@@ -82,12 +85,9 @@ const server = http.createServer((req, res) => {
     return sendJson(res, 200, {
       message: `Welcome to Vibe App: ${appId}`,
       description: "This is your isolated container running on Cloudflare!",
-      location: {
-        colo: cfColo,
-        country: cfCountry,
-        city: cfCity,
-        region: cfRegion,
-        description: `Container running in ${cfColo} datacenter`,
+      containerLocation: {
+        ...CONTAINER_LOCATION,
+        description: `Container running in ${CONTAINER_LOCATION.location} (${CONTAINER_LOCATION.region})`,
       },
       endpoints: {
         "/": "This info page",
@@ -150,12 +150,7 @@ const server = http.createServer((req, res) => {
   if (pathname === "/api/env") {
     return sendJson(res, 200, {
       appId,
-      location: {
-        colo: cfColo,
-        country: cfCountry,
-        city: cfCity,
-        region: cfRegion,
-      },
+      containerLocation: CONTAINER_LOCATION,
       environment: {
         nodeVersion: process.version,
         platform: process.platform,
@@ -228,3 +223,4 @@ server.listen(PORT, "0.0.0.0", () => {
 ╚════════════════════════════════════════════════════════════════╝
   `);
 });
+# Build 1770221444

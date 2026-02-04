@@ -1032,7 +1032,7 @@ function getUIHTML(baseUrl) {
         Apps you've accessed in this session. Click to view status.
       </p>
       <div class="apps-grid" id="appsGrid">
-        <div class="app-card" onclick="quickAccess('demo-app')">
+        <div class="app-card" id="app-demo-app" onclick="quickAccess('demo-app')">
           <div class="app-name">demo-app</div>
           <div class="app-status"><span class="stopped"></span>Click to activate</div>
         </div>
@@ -1131,10 +1131,16 @@ function getUIHTML(baseUrl) {
         await animateStep('step5', null);
         document.getElementById('step5').classList.add('success');
         
+        // Extract container location from response
+        var containerLoc = data.containerLocation ? data.containerLocation.location : null;
+        if (!containerLoc && data.container && data.container.running) {
+          containerLoc = 'unknown';
+        }
+        
         // Show response
         const responsePanel = document.getElementById('responsePanel');
         responsePanel.style.display = 'block';
-        document.getElementById('responseAppId').textContent = appId;
+        document.getElementById('responseAppId').textContent = appId + (containerLoc ? ' (running in ' + containerLoc + ')' : '');
         const responseContent = document.getElementById('responseContent');
         responseContent.textContent = JSON.stringify(data, null, 2);
         responseContent.className = 'response-content success';
@@ -1142,9 +1148,9 @@ function getUIHTML(baseUrl) {
         // Add to accessed apps
         if (!accessedApps.has(appId)) {
           accessedApps.add(appId);
-          addAppCard(appId, true);
+          addAppCard(appId, true, containerLoc);
         } else {
-          updateAppCard(appId, true);
+          updateAppCard(appId, true, containerLoc);
         }
         
       } catch (error) {
@@ -1190,22 +1196,26 @@ function getUIHTML(baseUrl) {
       });
     }
     
-    function addAppCard(appId, running) {
+    function addAppCard(appId, running, location) {
       const grid = document.getElementById('appsGrid');
       const card = document.createElement('div');
       card.className = 'app-card';
       card.id = 'app-' + appId;
       card.onclick = function() { quickAccess(appId); };
+      var locationText = location ? ' in ' + location : '';
       card.innerHTML = '<div class="app-name">' + appId + '</div>' +
-        '<div class="app-status"><span class="' + (running ? 'running' : 'stopped') + '"></span>' + (running ? 'Running' : 'Stopped') + '</div>';
+        '<div class="app-status"><span class="' + (running ? 'running' : 'stopped') + '"></span>' + 
+        (running ? 'Running' + locationText : 'Stopped') + '</div>';
       grid.appendChild(card);
     }
     
-    function updateAppCard(appId, running) {
+    function updateAppCard(appId, running, location) {
       const card = document.getElementById('app-' + appId);
       if (card) {
+        var locationText = location ? ' in ' + location : '';
         card.querySelector('.app-status').innerHTML = 
-          '<span class="' + (running ? 'running' : 'stopped') + '"></span>' + (running ? 'Running' : 'Stopped');
+          '<span class="' + (running ? 'running' : 'stopped') + '"></span>' + 
+          (running ? 'Running' + locationText : 'Stopped');
       }
     }
     
