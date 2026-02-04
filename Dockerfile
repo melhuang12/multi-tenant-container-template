@@ -1,6 +1,7 @@
 # =============================================================================
 # Multi-Tenant Vibe App Container
 # =============================================================================
+# Build: v2 - Added location tracking
 #
 # This Dockerfile creates the container image that runs for each tenant.
 # 

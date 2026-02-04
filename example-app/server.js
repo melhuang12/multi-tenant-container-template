@@ -42,12 +42,19 @@ const server = http.createServer((req, res) => {
   // Get app ID from header (set by the Worker) or environment
   const appId = req.headers["x-app-id"] || APP_ID;
   
+  // Get location info from Cloudflare headers (passed through by Worker)
+  const cfColo = req.headers["cf-colo"] || req.headers["x-cf-colo"] || "unknown";
+  const cfCountry = req.headers["cf-ipcountry"] || req.headers["x-cf-country"] || "unknown";
+  const cfCity = req.headers["x-cf-city"] || "unknown";
+  const cfRegion = req.headers["x-cf-region"] || "unknown";
+  
   // Log request for debugging
-  console.log(`[${appId}] ${req.method} ${req.url}`);
+  console.log(`[${appId}] ${req.method} ${req.url} (colo: ${cfColo})`);
   
   // Set common headers
   res.setHeader("Content-Type", "application/json");
   res.setHeader("X-App-Id", appId);
+  res.setHeader("X-Container-Colo", cfColo);
   
   // ---------------------------------------------------------------------------
   // ROUTING
@@ -61,6 +68,10 @@ const server = http.createServer((req, res) => {
     return sendJson(res, 200, {
       status: "healthy",
       appId,
+      location: {
+        colo: cfColo,
+        country: cfCountry,
+      },
       uptime: Math.floor((Date.now() - startTime) / 1000),
       requestCount,
     });
@@ -71,6 +82,13 @@ const server = http.createServer((req, res) => {
     return sendJson(res, 200, {
       message: `Welcome to Vibe App: ${appId}`,
       description: "This is your isolated container running on Cloudflare!",
+      location: {
+        colo: cfColo,
+        country: cfCountry,
+        city: cfCity,
+        region: cfRegion,
+        description: `Container running in ${cfColo} datacenter`,
+      },
       endpoints: {
         "/": "This info page",
         "/health": "Health check",
@@ -132,6 +150,12 @@ const server = http.createServer((req, res) => {
   if (pathname === "/api/env") {
     return sendJson(res, 200, {
       appId,
+      location: {
+        colo: cfColo,
+        country: cfCountry,
+        city: cfCity,
+        region: cfRegion,
+      },
       environment: {
         nodeVersion: process.version,
         platform: process.platform,

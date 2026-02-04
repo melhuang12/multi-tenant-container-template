@@ -152,6 +152,8 @@ export class VibeAppContainer extends Container {
         status: isRunning ? "running" : "stopped",
         port: this.defaultPort,
       },
+      // Container location is stored when container is accessed
+      containerLocation: await this.ctx.storage.get("containerLocation") || null,
       stats: {
         startCount: await this.ctx.storage.get("startCount") || 0,
         lastStarted: await this.ctx.storage.get("lastStarted"),
@@ -160,6 +162,14 @@ export class VibeAppContainer extends Container {
       },
       metadata: await this.ctx.storage.get("metadata") || {},
     };
+  }
+  
+  /**
+   * Store the container's location when a request is made
+   * Called from the Worker with CF location headers
+   */
+  async updateLocation(location) {
+    await this.ctx.storage.put("containerLocation", location);
   }
 
   /**
@@ -350,6 +360,13 @@ export default {
       // Status endpoint - get container info without forwarding to container
       if (appPath === "/_status") {
         const status = await appContainer.getAppStatus();
+        // Add request location info (where the request originated)
+        status.requestLocation = {
+          colo: request.cf?.colo || "unknown",
+          country: request.cf?.country || "unknown",
+          city: request.cf?.city || "unknown",
+          region: request.cf?.region || "unknown",
+        };
         return Response.json(status);
       }
       
@@ -394,6 +411,27 @@ export default {
       // Add headers to help the container identify the request context
       containerRequest.headers.set("X-App-Id", appId);
       containerRequest.headers.set("X-Original-URL", request.url);
+      
+      // Pass Cloudflare location headers to the container
+      // These help identify where the container is running
+      const cfColo = request.cf?.colo || "unknown";
+      const cfCountry = request.cf?.country || "unknown";
+      const cfCity = request.cf?.city || "unknown";
+      const cfRegion = request.cf?.region || "unknown";
+      containerRequest.headers.set("X-CF-Colo", cfColo);
+      containerRequest.headers.set("X-CF-Country", cfCountry);
+      containerRequest.headers.set("X-CF-City", cfCity);
+      containerRequest.headers.set("X-CF-Region", cfRegion);
+      
+      // Store container location in DO storage for status endpoint
+      // This runs in the background, doesn't block the request
+      ctx.waitUntil(appContainer.updateLocation({
+        colo: cfColo,
+        country: cfCountry,
+        city: cfCity,
+        region: cfRegion,
+        lastUpdated: Date.now(),
+      }));
       
       const response = await appContainer.fetch(containerRequest);
       
