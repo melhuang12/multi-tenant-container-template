@@ -141,10 +141,15 @@ export class VibeAppContainer extends Container {
   async getAppStatus() {
     const appId = this.ctx.id.name || "unknown";
     
+    // this.ctx.container.running is a boolean property (not a method)
+    // Returns true if container is currently running
+    const isRunning = this.ctx.container.running;
+    
     return {
       appId,
       container: {
-        status: await this.ctx.container.status(),
+        running: isRunning,
+        status: isRunning ? "running" : "stopped",
         port: this.defaultPort,
       },
       stats: {
@@ -178,8 +183,9 @@ export class VibeAppContainer extends Container {
     const appId = this.ctx.id.name || "unknown";
     console.log(`[${appId}] Restart requested`);
     
-    await this.ctx.container.stop();
-    await this.ctx.container.start();
+    // destroy() stops the container, start() boots it back up
+    await this.ctx.container.destroy();
+    this.ctx.container.start();
     
     return { success: true, message: "Container restarted" };
   }
