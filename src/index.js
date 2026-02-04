@@ -246,13 +246,41 @@ export default {
     // STEP 2: Handle platform-level routes (no appId needed)
     // -------------------------------------------------------------------------
     
+    // Interactive Learning UI - serves at root
+    if (url.pathname === "/" || url.pathname === "/ui") {
+      const baseUrl = url.protocol + "//" + url.host;
+      try {
+        const html = getUIHTML(baseUrl);
+        return new Response(html, {
+          headers: { "Content-Type": "text/html; charset=utf-8" },
+        });
+      } catch (e) {
+        return new Response("UI Error: " + e.message, { status: 500 });
+      }
+    }
+    
     // Health check endpoint for the platform itself
-    if (url.pathname === "/health" || url.pathname === "/") {
+    if (url.pathname === "/health") {
       return Response.json({
         status: "healthy",
         platform: "Multi-Tenant Vibe App Platform",
         version: "1.0.0",
         usage: {
+          pathRouting: "/app/{appId}/your-path",
+          queryRouting: "/?appId={appId}",
+          statusEndpoint: "/app/{appId}/_status",
+        },
+      });
+    }
+    
+    // API endpoint for JSON response (for programmatic access)
+    if (url.pathname === "/api") {
+      return Response.json({
+        status: "healthy",
+        platform: "Multi-Tenant Vibe App Platform",
+        version: "1.0.0",
+        usage: {
+          ui: "/",
           pathRouting: "/app/{appId}/your-path",
           queryRouting: "/?appId={appId}",
           statusEndpoint: "/app/{appId}/_status",
@@ -394,3 +422,766 @@ export default {
     }
   },
 };
+/**
+ * Interactive Learning UI for Multi-Tenant Container Routing
+ * 
+ * This UI helps visualize how requests flow through:
+ * Worker → Durable Object → Container
+ */
+
+function getUIHTML(baseUrl) {
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Multi-Tenant Container Routing - Interactive Demo</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      color: #e4e4e7;
+      min-height: 100vh;
+      padding: 2rem;
+    }
+    
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    
+    h1 {
+      text-align: center;
+      margin-bottom: 0.5rem;
+      background: linear-gradient(90deg, #f97316, #fb923c);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    
+    .subtitle {
+      text-align: center;
+      color: #a1a1aa;
+      margin-bottom: 2rem;
+    }
+    
+    /* Architecture Diagram */
+    .architecture {
+      background: #27272a;
+      border-radius: 12px;
+      padding: 2rem;
+      margin-bottom: 2rem;
+      border: 1px solid #3f3f46;
+    }
+    
+    .architecture h2 {
+      margin-bottom: 1.5rem;
+      color: #f97316;
+    }
+    
+    .flow-diagram {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+    
+    .flow-box {
+      background: #18181b;
+      border: 2px solid #3f3f46;
+      border-radius: 8px;
+      padding: 1.5rem;
+      text-align: center;
+      flex: 1;
+      min-width: 150px;
+      transition: all 0.3s ease;
+    }
+    
+    .flow-box.active {
+      border-color: #f97316;
+      box-shadow: 0 0 20px rgba(249, 115, 22, 0.3);
+    }
+    
+    .flow-box.worker { border-top: 3px solid #3b82f6; }
+    .flow-box.durable-object { border-top: 3px solid #8b5cf6; }
+    .flow-box.container { border-top: 3px solid #22c55e; }
+    
+    .flow-box h3 {
+      font-size: 0.9rem;
+      margin-bottom: 0.5rem;
+      color: #a1a1aa;
+    }
+    
+    .flow-box .title {
+      font-weight: bold;
+      font-size: 1.1rem;
+      margin-bottom: 0.5rem;
+    }
+    
+    .flow-box .status {
+      font-size: 0.8rem;
+      color: #71717a;
+    }
+    
+    .flow-arrow {
+      font-size: 2rem;
+      color: #f97316;
+      animation: pulse 1.5s infinite;
+    }
+    
+    @keyframes pulse {
+      0%, 100% { opacity: 0.5; }
+      50% { opacity: 1; }
+    }
+    
+    /* Interactive Demo */
+    .demo-section {
+      background: #27272a;
+      border-radius: 12px;
+      padding: 2rem;
+      margin-bottom: 2rem;
+      border: 1px solid #3f3f46;
+    }
+    
+    .demo-section h2 {
+      margin-bottom: 1rem;
+      color: #f97316;
+    }
+    
+    .input-group {
+      display: flex;
+      gap: 1rem;
+      margin-bottom: 1rem;
+      flex-wrap: wrap;
+    }
+    
+    .input-wrapper {
+      flex: 1;
+      min-width: 200px;
+    }
+    
+    .input-wrapper label {
+      display: block;
+      margin-bottom: 0.5rem;
+      color: #a1a1aa;
+      font-size: 0.9rem;
+    }
+    
+    input, select {
+      width: 100%;
+      padding: 0.75rem 1rem;
+      background: #18181b;
+      border: 1px solid #3f3f46;
+      border-radius: 6px;
+      color: #e4e4e7;
+      font-size: 1rem;
+    }
+    
+    input:focus, select:focus {
+      outline: none;
+      border-color: #f97316;
+    }
+    
+    .btn {
+      padding: 0.75rem 1.5rem;
+      background: linear-gradient(90deg, #f97316, #ea580c);
+      border: none;
+      border-radius: 6px;
+      color: white;
+      font-weight: bold;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    
+    .btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(249, 115, 22, 0.4);
+    }
+    
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+    
+    /* Timeline */
+    .timeline {
+      margin-top: 1.5rem;
+      border-left: 2px solid #3f3f46;
+      padding-left: 1.5rem;
+    }
+    
+    .timeline-item {
+      position: relative;
+      padding-bottom: 1.5rem;
+      opacity: 0;
+      transform: translateX(-20px);
+      transition: all 0.3s ease;
+    }
+    
+    .timeline-item.visible {
+      opacity: 1;
+      transform: translateX(0);
+    }
+    
+    .timeline-item::before {
+      content: '';
+      position: absolute;
+      left: -1.5rem;
+      top: 0.5rem;
+      width: 12px;
+      height: 12px;
+      background: #3f3f46;
+      border-radius: 50%;
+      transform: translateX(-5px);
+    }
+    
+    .timeline-item.active::before {
+      background: #f97316;
+      box-shadow: 0 0 10px rgba(249, 115, 22, 0.5);
+    }
+    
+    .timeline-item.success::before {
+      background: #22c55e;
+    }
+    
+    .timeline-step {
+      font-size: 0.8rem;
+      color: #f97316;
+      margin-bottom: 0.25rem;
+    }
+    
+    .timeline-title {
+      font-weight: bold;
+      margin-bottom: 0.25rem;
+    }
+    
+    .timeline-detail {
+      font-size: 0.9rem;
+      color: #a1a1aa;
+    }
+    
+    .timeline-code {
+      background: #18181b;
+      padding: 0.5rem 0.75rem;
+      border-radius: 4px;
+      font-family: 'Monaco', 'Menlo', monospace;
+      font-size: 0.8rem;
+      margin-top: 0.5rem;
+      overflow-x: auto;
+      border: 1px solid #3f3f46;
+    }
+    
+    /* Response Panel */
+    .response-panel {
+      background: #18181b;
+      border-radius: 8px;
+      padding: 1rem;
+      margin-top: 1rem;
+      border: 1px solid #3f3f46;
+    }
+    
+    .response-panel h3 {
+      font-size: 0.9rem;
+      color: #a1a1aa;
+      margin-bottom: 0.5rem;
+    }
+    
+    .response-content {
+      font-family: 'Monaco', 'Menlo', monospace;
+      font-size: 0.85rem;
+      white-space: pre-wrap;
+      word-break: break-all;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+    
+    .response-content.error {
+      color: #ef4444;
+    }
+    
+    .response-content.success {
+      color: #22c55e;
+    }
+    
+    /* Key Concepts */
+    .concepts {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 1rem;
+      margin-top: 2rem;
+    }
+    
+    .concept-card {
+      background: #27272a;
+      border-radius: 8px;
+      padding: 1.5rem;
+      border: 1px solid #3f3f46;
+    }
+    
+    .concept-card h3 {
+      color: #f97316;
+      margin-bottom: 0.75rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    
+    .concept-card p {
+      color: #a1a1aa;
+      font-size: 0.9rem;
+      line-height: 1.6;
+    }
+    
+    .concept-card code {
+      background: #18181b;
+      padding: 0.2rem 0.4rem;
+      border-radius: 4px;
+      font-size: 0.85rem;
+      color: #f97316;
+    }
+    
+    /* Active Apps */
+    .active-apps {
+      margin-top: 2rem;
+    }
+    
+    .apps-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+      gap: 1rem;
+      margin-top: 1rem;
+    }
+    
+    .app-card {
+      background: #18181b;
+      border-radius: 8px;
+      padding: 1rem;
+      border: 1px solid #3f3f46;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    
+    .app-card:hover {
+      border-color: #f97316;
+      transform: translateY(-2px);
+    }
+    
+    .app-card .app-name {
+      font-weight: bold;
+      margin-bottom: 0.5rem;
+      color: #22c55e;
+    }
+    
+    .app-card .app-status {
+      font-size: 0.8rem;
+      color: #a1a1aa;
+    }
+    
+    .app-card .app-status span {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      margin-right: 0.5rem;
+    }
+    
+    .app-card .app-status span.running {
+      background: #22c55e;
+      box-shadow: 0 0 8px rgba(34, 197, 94, 0.5);
+    }
+    
+    .app-card .app-status span.stopped {
+      background: #71717a;
+    }
+    
+    /* Footer */
+    .footer {
+      text-align: center;
+      margin-top: 3rem;
+      padding-top: 2rem;
+      border-top: 1px solid #3f3f46;
+      color: #71717a;
+    }
+    
+    .footer a {
+      color: #f97316;
+      text-decoration: none;
+    }
+    
+    .footer a:hover {
+      text-decoration: underline;
+    }
+    
+    /* Loading spinner */
+    .spinner {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 2px solid #3f3f46;
+      border-top-color: #f97316;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin-right: 0.5rem;
+    }
+    
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    
+    /* Responsive */
+    @media (max-width: 768px) {
+      body {
+        padding: 1rem;
+      }
+      
+      .flow-diagram {
+        flex-direction: column;
+      }
+      
+      .flow-arrow {
+        transform: rotate(90deg);
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Multi-Tenant Container Routing</h1>
+    <p class="subtitle">Interactive demo showing how requests flow through Workers, Durable Objects, and Containers</p>
+    
+    <!-- Architecture Diagram -->
+    <div class="architecture">
+      <h2>Architecture Flow</h2>
+      <div class="flow-diagram">
+        <div class="flow-box worker" id="flow-worker">
+          <h3>STEP 1</h3>
+          <div class="title">Worker</div>
+          <div class="status">Routes by appId</div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-box durable-object" id="flow-do">
+          <h3>STEP 2</h3>
+          <div class="title">Durable Object</div>
+          <div class="status">Manages lifecycle</div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-box container" id="flow-container">
+          <h3>STEP 3</h3>
+          <div class="title">Container</div>
+          <div class="status">Runs your app</div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Interactive Demo -->
+    <div class="demo-section">
+      <h2>Try It Yourself</h2>
+      <p style="color: #a1a1aa; margin-bottom: 1rem;">
+        Enter an App ID and watch how the request flows through the system. 
+        Each unique App ID creates its own isolated container!
+      </p>
+      
+      <div class="input-group">
+        <div class="input-wrapper">
+          <label for="appId">App ID (your tenant identifier)</label>
+          <input type="text" id="appId" placeholder="e.g., my-cool-app" value="demo-app">
+        </div>
+        <div class="input-wrapper">
+          <label for="endpoint">Endpoint</label>
+          <select id="endpoint">
+            <option value="/">/ (App Home)</option>
+            <option value="/health">/health (Health Check)</option>
+            <option value="/api/counter">/api/counter (Counter)</option>
+            <option value="/api/env">/api/env (Environment)</option>
+            <option value="/_status">/_status (Container Status)</option>
+          </select>
+        </div>
+        <div class="input-wrapper" style="flex: 0; align-self: flex-end;">
+          <button class="btn" id="sendRequest" onclick="sendRequest()">
+            Send Request
+          </button>
+        </div>
+      </div>
+      
+      <!-- Timeline -->
+      <div class="timeline" id="timeline">
+        <div class="timeline-item" id="step1">
+          <div class="timeline-step">STEP 1</div>
+          <div class="timeline-title">Request hits Worker</div>
+          <div class="timeline-detail">Worker extracts appId from URL path</div>
+          <div class="timeline-code" id="step1-code"></div>
+        </div>
+        <div class="timeline-item" id="step2">
+          <div class="timeline-step">STEP 2</div>
+          <div class="timeline-title">Get Durable Object stub</div>
+          <div class="timeline-detail">idFromName() creates deterministic ID from appId</div>
+          <div class="timeline-code" id="step2-code"></div>
+        </div>
+        <div class="timeline-item" id="step3">
+          <div class="timeline-step">STEP 3</div>
+          <div class="timeline-title">Forward to Durable Object</div>
+          <div class="timeline-detail">DO checks if container is running, starts if needed</div>
+          <div class="timeline-code" id="step3-code"></div>
+        </div>
+        <div class="timeline-item" id="step4">
+          <div class="timeline-step">STEP 4</div>
+          <div class="timeline-title">Container processes request</div>
+          <div class="timeline-detail">Your app code runs inside the isolated container</div>
+          <div class="timeline-code" id="step4-code"></div>
+        </div>
+        <div class="timeline-item" id="step5">
+          <div class="timeline-step">STEP 5</div>
+          <div class="timeline-title">Response returned</div>
+          <div class="timeline-detail">Container → DO → Worker → You</div>
+        </div>
+      </div>
+      
+      <!-- Response -->
+      <div class="response-panel" id="responsePanel" style="display: none;">
+        <h3>Response from <span id="responseAppId"></span></h3>
+        <div class="response-content" id="responseContent"></div>
+      </div>
+    </div>
+    
+    <!-- Key Concepts -->
+    <div class="demo-section">
+      <h2>Key Concepts</h2>
+      <div class="concepts">
+        <div class="concept-card">
+          <h3>🎯 Deterministic Routing</h3>
+          <p>
+            <code>idFromName("my-app")</code> always produces the same Durable Object ID.
+            This means the same appId always routes to the same container, no matter where
+            the request comes from.
+          </p>
+        </div>
+        <div class="concept-card">
+          <h3>🔒 Complete Isolation</h3>
+          <p>
+            Each appId gets its own container with separate filesystem, memory, and processes.
+            App A cannot access App B's data or resources.
+          </p>
+        </div>
+        <div class="concept-card">
+          <h3>😴 Auto Sleep/Wake</h3>
+          <p>
+            Containers automatically sleep after <code>sleepAfter</code> period (default: 10m).
+            They wake instantly on the next request. This saves costs!
+          </p>
+        </div>
+        <div class="concept-card">
+          <h3>💾 Persistent State</h3>
+          <p>
+            Durable Objects have built-in SQLite storage. Container state is ephemeral,
+            but DO state persists across container restarts.
+          </p>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Active Apps -->
+    <div class="demo-section active-apps">
+      <h2>Your Active Apps</h2>
+      <p style="color: #a1a1aa; margin-bottom: 1rem;">
+        Apps you've accessed in this session. Click to view status.
+      </p>
+      <div class="apps-grid" id="appsGrid">
+        <div class="app-card" onclick="quickAccess('demo-app')">
+          <div class="app-name">demo-app</div>
+          <div class="app-status"><span class="stopped"></span>Click to activate</div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Code Example -->
+    <div class="demo-section">
+      <h2>The Code Behind It</h2>
+      <div class="timeline-code" style="font-size: 0.85rem; line-height: 1.6;">
+<span style="color: #a1a1aa;">// Worker entry point - routes requests to containers</span>
+<span style="color: #c084fc;">export default</span> {
+  <span style="color: #c084fc;">async</span> <span style="color: #60a5fa;">fetch</span>(request, env) {
+    <span style="color: #a1a1aa;">// Extract appId from URL: /app/{appId}/...</span>
+    <span style="color: #c084fc;">const</span> url = <span style="color: #c084fc;">new</span> <span style="color: #60a5fa;">URL</span>(request.url);
+    <span style="color: #c084fc;">const</span> match = url.pathname.<span style="color: #60a5fa;">match</span>(<span style="color: #fbbf24;">/^\\/app\\/([^\\/]+)/</span>);
+    <span style="color: #c084fc;">const</span> appId = match[<span style="color: #22c55e;">1</span>];
+    
+    <span style="color: #a1a1aa;">// Get container by name - deterministic routing!</span>
+    <span style="color: #c084fc;">const</span> container = env.VIBE_APP.<span style="color: #60a5fa;">getByName</span>(appId);
+    
+    <span style="color: #a1a1aa;">// Forward request - container auto-starts if sleeping</span>
+    <span style="color: #c084fc;">return</span> container.<span style="color: #60a5fa;">fetch</span>(request);
+  }
+};
+      </div>
+    </div>
+    
+    <div class="footer">
+      <p>
+        <a href="https://github.com/melhuang12/multi-tenant-container-template" target="_blank">View on GitHub</a>
+        &nbsp;|&nbsp;
+        <a href="https://developers.cloudflare.com/containers/" target="_blank">Cloudflare Containers Docs</a>
+        &nbsp;|&nbsp;
+        <a href="https://developers.cloudflare.com/durable-objects/" target="_blank">Durable Objects Docs</a>
+      </p>
+    </div>
+  </div>
+  
+  <script>
+    const BASE_URL = '${baseUrl}';
+    const accessedApps = new Set(['demo-app']);
+    
+    async function sendRequest() {
+      const appId = document.getElementById('appId').value.trim();
+      const endpoint = document.getElementById('endpoint').value;
+      
+      if (!appId) {
+        alert('Please enter an App ID');
+        return;
+      }
+      
+      // Validate appId
+      if (!/^[a-zA-Z0-9_-]+$/.test(appId)) {
+        alert('App ID must contain only letters, numbers, hyphens, and underscores');
+        return;
+      }
+      
+      // Disable button
+      const btn = document.getElementById('sendRequest');
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner"></span>Sending...';
+      
+      // Reset timeline
+      document.querySelectorAll('.timeline-item').forEach(el => {
+        el.classList.remove('visible', 'active', 'success');
+      });
+      document.querySelectorAll('.flow-box').forEach(el => {
+        el.classList.remove('active');
+      });
+      
+      // Animate through steps
+      await animateStep('step1', 'flow-worker', 
+        'const url = new URL("' + BASE_URL + '/app/' + appId + endpoint + '");\\nconst appId = "' + appId + '";');
+      
+      await animateStep('step2', 'flow-do',
+        'const container = env.VIBE_APP.getByName("' + appId + '");\\n// Deterministic: "' + appId + '" → always same DO');
+      
+      await animateStep('step3', 'flow-container',
+        'await container.fetch(request);\\n// Container starts if not running');
+      
+      // Actually make the request
+      try {
+        const url = BASE_URL + '/app/' + appId + endpoint;
+        const startTime = Date.now();
+        const response = await fetch(url);
+        const elapsed = Date.now() - startTime;
+        const data = await response.json();
+        
+        // Step 4 - container processing
+        document.getElementById('step4-code').textContent = 
+          '// Container processed request in ' + elapsed + 'ms';
+        await animateStep('step4', null);
+        
+        // Step 5 - response
+        await animateStep('step5', null);
+        document.getElementById('step5').classList.add('success');
+        
+        // Show response
+        const responsePanel = document.getElementById('responsePanel');
+        responsePanel.style.display = 'block';
+        document.getElementById('responseAppId').textContent = appId;
+        const responseContent = document.getElementById('responseContent');
+        responseContent.textContent = JSON.stringify(data, null, 2);
+        responseContent.className = 'response-content success';
+        
+        // Add to accessed apps
+        if (!accessedApps.has(appId)) {
+          accessedApps.add(appId);
+          addAppCard(appId, true);
+        } else {
+          updateAppCard(appId, true);
+        }
+        
+      } catch (error) {
+        document.getElementById('step4-code').textContent = '// Error: ' + error.message;
+        document.getElementById('step4').classList.add('visible');
+        
+        const responsePanel = document.getElementById('responsePanel');
+        responsePanel.style.display = 'block';
+        document.getElementById('responseAppId').textContent = appId;
+        const responseContent = document.getElementById('responseContent');
+        responseContent.textContent = 'Error: ' + error.message;
+        responseContent.className = 'response-content error';
+      }
+      
+      // Re-enable button
+      btn.disabled = false;
+      btn.textContent = 'Send Request';
+    }
+    
+    async function animateStep(stepId, flowId, code) {
+      return new Promise(resolve => {
+        setTimeout(() => {
+          const step = document.getElementById(stepId);
+          step.classList.add('visible', 'active');
+          
+          if (code) {
+            document.getElementById(stepId + '-code').textContent = code;
+          }
+          
+          if (flowId) {
+            document.querySelectorAll('.flow-box').forEach(el => el.classList.remove('active'));
+            document.getElementById(flowId).classList.add('active');
+          }
+          
+          // Remove active from previous steps
+          setTimeout(() => {
+            step.classList.remove('active');
+            step.classList.add('success');
+          }, 400);
+          
+          resolve();
+        }, 500);
+      });
+    }
+    
+    function addAppCard(appId, running) {
+      const grid = document.getElementById('appsGrid');
+      const card = document.createElement('div');
+      card.className = 'app-card';
+      card.id = 'app-' + appId;
+      card.onclick = function() { quickAccess(appId); };
+      card.innerHTML = '<div class="app-name">' + appId + '</div>' +
+        '<div class="app-status"><span class="' + (running ? 'running' : 'stopped') + '"></span>' + (running ? 'Running' : 'Stopped') + '</div>';
+      grid.appendChild(card);
+    }
+    
+    function updateAppCard(appId, running) {
+      const card = document.getElementById('app-' + appId);
+      if (card) {
+        card.querySelector('.app-status').innerHTML = 
+          '<span class="' + (running ? 'running' : 'stopped') + '"></span>' + (running ? 'Running' : 'Stopped');
+      }
+    }
+    
+    function quickAccess(appId) {
+      document.getElementById('appId').value = appId;
+      document.getElementById('endpoint').value = '/_status';
+      sendRequest();
+    }
+    
+    // Handle enter key
+    document.getElementById('appId').addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') sendRequest();
+    });
+  </script>
+</body>
+</html>`;
+}
