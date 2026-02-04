@@ -39,6 +39,13 @@ const CONTAINER_LOCATION = {
   durableObjectId: process.env.CLOUDFLARE_DURABLE_OBJECT_ID || "unknown",
 };
 
+// =============================================================================
+// INSTANCE IDENTITY (proves same container is reached)
+// =============================================================================
+// This ID is generated ONCE when the container starts.
+// If you see the same instanceId across requests, you're hitting the same container!
+const INSTANCE_ID = Math.random().toString(36).substring(2, 10) + '-' + Date.now().toString(36);
+
 // In-memory state (persists for container lifetime, resets on restart)
 // For persistent state, use external storage (R2, D1, KV, etc.)
 let requestCount = 0;
@@ -85,22 +92,27 @@ const server = http.createServer((req, res) => {
     return sendJson(res, 200, {
       message: `Welcome to Vibe App: ${appId}`,
       description: "This is your isolated container running on Cloudflare!",
+      
+      // PROOF OF SAME INSTANCE: These values prove you're hitting the same container
+      proof: {
+        instanceId: INSTANCE_ID,  // Same ID = same container instance
+        requestCount,             // Increments with each request (resets on restart)
+        uptimeSeconds: Math.floor((Date.now() - startTime) / 1000),
+        startedAt: new Date(startTime).toISOString(),
+        explanation: "If instanceId stays the same across requests, you are reaching the SAME container!"
+      },
+      
       containerLocation: {
         ...CONTAINER_LOCATION,
         description: `Container running in ${CONTAINER_LOCATION.location} (${CONTAINER_LOCATION.region})`,
       },
+      
       endpoints: {
         "/": "This info page",
         "/health": "Health check",
         "/api/echo": "Echo back your request (POST)",
         "/api/counter": "Get/increment a counter",
         "/api/env": "View environment info",
-      },
-      stats: {
-        appId,
-        uptime: `${Math.floor((Date.now() - startTime) / 1000)} seconds`,
-        requestCount,
-        nodeVersion: process.version,
       },
     });
   }
@@ -217,10 +229,10 @@ server.listen(PORT, "0.0.0.0", () => {
 ║                     VIBE APP CONTAINER                         ║
 ╠════════════════════════════════════════════════════════════════╣
 ║  Server running on port ${PORT}                                   ║
-║  App ID: ${APP_ID.padEnd(50)}║
+║  Instance ID: ${INSTANCE_ID.padEnd(44)}║
+║  Location: ${CONTAINER_LOCATION.location.padEnd(47)}║
 ║  Node.js: ${process.version.padEnd(49)}║
 ║  Started: ${new Date().toISOString().padEnd(49)}║
 ╚════════════════════════════════════════════════════════════════╝
   `);
 });
-# Build 1770221444

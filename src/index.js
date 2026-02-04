@@ -145,31 +145,51 @@ export class VibeAppContainer extends Container {
     // Returns true if container is currently running
     const isRunning = this.ctx.container.running;
     
+    // Get the Durable Object ID - this is the PROOF of deterministic routing
+    // Same appId ALWAYS produces same DO ID
+    const doId = this.ctx.id.toString();
+    
     return {
       appId,
+      
+      // PROOF: Durable Object identity
+      durableObject: {
+        id: doId,
+        idShort: doId.substring(0, 16) + "...",  // Short version for display
+        explanation: "Same appId ALWAYS routes to this exact Durable Object ID"
+      },
+      
       container: {
         running: isRunning,
         status: isRunning ? "running" : "stopped",
         port: this.defaultPort,
       },
+      
       // Container location is stored when container is accessed
       containerLocation: await this.ctx.storage.get("containerLocation") || null,
+      
       stats: {
         startCount: await this.ctx.storage.get("startCount") || 0,
         lastStarted: await this.ctx.storage.get("lastStarted"),
         lastStopped: await this.ctx.storage.get("lastStopped"),
         lastError: await this.ctx.storage.get("lastError"),
+        totalRequests: await this.ctx.storage.get("totalRequests") || 0,
       },
+      
       metadata: await this.ctx.storage.get("metadata") || {},
     };
   }
   
   /**
-   * Store the container's location when a request is made
+   * Store the container's location and increment request counter
    * Called from the Worker with CF location headers
    */
   async updateLocation(location) {
+    // Increment total request count (persists in DO storage)
+    const totalRequests = ((await this.ctx.storage.get("totalRequests")) || 0) + 1;
+    await this.ctx.storage.put("totalRequests", totalRequests);
     await this.ctx.storage.put("containerLocation", location);
+    return { totalRequests };
   }
 
   /**
