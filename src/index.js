@@ -1009,37 +1009,124 @@ function getUIHTML(baseUrl) {
       </div>
     </div>
     
+    <!-- DO Class vs Instance Visualization -->
+    <div class="demo-section">
+      <h2>DO Class vs DO Instance</h2>
+      <p style="color: #a1a1aa; margin-bottom: 1.5rem;">
+        A Durable Object <strong>class</strong> is the blueprint. <strong>Instances</strong> are created from it, each with a unique ID.
+      </p>
+      
+      <div style="display: flex; gap: 2rem; flex-wrap: wrap;">
+        <!-- Class (Blueprint) -->
+        <div style="flex: 1; min-width: 280px;">
+          <div style="background: linear-gradient(135deg, #1e1b4b 0%, #312e81 100%); border: 2px dashed #6366f1; border-radius: 12px; padding: 1.5rem;">
+            <div style="color: #a5b4fc; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 0.5rem;">Class (Blueprint)</div>
+            <div style="color: #e0e7ff; font-size: 1.1rem; font-weight: bold; font-family: monospace;">VibeAppContainer</div>
+            <div style="margin-top: 1rem; padding: 1rem; background: #0f0d1a; border-radius: 8px; font-family: monospace; font-size: 0.8rem;">
+              <div style="color: #6b7280;">// Defined ONCE in code</div>
+              <div><span style="color: #c084fc;">class</span> <span style="color: #22d3ee;">VibeAppContainer</span></div>
+              <div style="padding-left: 1rem;">defaultPort = <span style="color: #34d399;">8080</span></div>
+              <div style="padding-left: 1rem;">sleepAfter = <span style="color: #fbbf24;">"10m"</span></div>
+            </div>
+            <div style="margin-top: 1rem; color: #a5b4fc; font-size: 0.85rem;">
+              One class definition shared by all instances
+            </div>
+          </div>
+        </div>
+        
+        <!-- Arrow -->
+        <div style="display: flex; align-items: center; color: #f97316; font-size: 2rem;">
+          <span style="display: none;">→</span>
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M5 12h14M12 5l7 7-7 7"/>
+          </svg>
+        </div>
+        
+        <!-- Instances -->
+        <div style="flex: 2; min-width: 350px;">
+          <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+            <!-- Instance 1 -->
+            <div style="background: linear-gradient(135deg, #14532d 0%, #166534 100%); border: 2px solid #22c55e; border-radius: 12px; padding: 1rem; display: flex; align-items: center; gap: 1rem;">
+              <div style="background: #0f2a1a; border-radius: 8px; padding: 0.75rem; font-family: monospace; font-size: 0.75rem;">
+                <div style="color: #4ade80;">Instance</div>
+                <div style="color: #bbf7d0; font-weight: bold;">app-1</div>
+              </div>
+              <div style="flex: 1;">
+                <div style="color: #86efac; font-size: 0.8rem;">ID: <span style="font-family: monospace;">a1b2c3...</span></div>
+                <div style="color: #4ade80; font-size: 0.75rem;">Own storage, own container</div>
+              </div>
+              <div style="background: #052e16; padding: 0.5rem 0.75rem; border-radius: 6px; font-size: 0.7rem; color: #4ade80;">ams07</div>
+            </div>
+            
+            <!-- Instance 2 -->
+            <div style="background: linear-gradient(135deg, #7c2d12 0%, #9a3412 100%); border: 2px solid #f97316; border-radius: 12px; padding: 1rem; display: flex; align-items: center; gap: 1rem;">
+              <div style="background: #1c0a00; border-radius: 8px; padding: 0.75rem; font-family: monospace; font-size: 0.75rem;">
+                <div style="color: #fb923c;">Instance</div>
+                <div style="color: #fed7aa; font-weight: bold;">app-2</div>
+              </div>
+              <div style="flex: 1;">
+                <div style="color: #fdba74; font-size: 0.8rem;">ID: <span style="font-family: monospace;">d4e5f6...</span></div>
+                <div style="color: #fb923c; font-size: 0.75rem;">Own storage, own container</div>
+              </div>
+              <div style="background: #1c0a00; padding: 0.5rem 0.75rem; border-radius: 6px; font-size: 0.7rem; color: #fb923c;">cdg12</div>
+            </div>
+            
+            <!-- Instance 3 -->
+            <div style="background: linear-gradient(135deg, #1e3a5f 0%, #1e40af 100%); border: 2px solid #3b82f6; border-radius: 12px; padding: 1rem; display: flex; align-items: center; gap: 1rem;">
+              <div style="background: #0c1929; border-radius: 8px; padding: 0.75rem; font-family: monospace; font-size: 0.75rem;">
+                <div style="color: #60a5fa;">Instance</div>
+                <div style="color: #bfdbfe; font-weight: bold;">app-3</div>
+              </div>
+              <div style="flex: 1;">
+                <div style="color: #93c5fd; font-size: 0.8rem;">ID: <span style="font-family: monospace;">g7h8i9...</span></div>
+                <div style="color: #60a5fa; font-size: 0.75rem;">Own storage, own container</div>
+              </div>
+              <div style="background: #0c1929; padding: 0.5rem 0.75rem; border-radius: 6px; font-size: 0.7rem; color: #60a5fa;">fra03</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Key insight -->
+      <div style="margin-top: 1.5rem; background: #18181b; border-radius: 8px; padding: 1rem; border-left: 4px solid #f97316;">
+        <div style="color: #f97316; font-weight: bold; margin-bottom: 0.5rem;">Key Insight</div>
+        <div style="color: #a1a1aa; font-size: 0.9rem;">
+          <code style="background: #27272a; padding: 0.2rem 0.4rem; border-radius: 4px; color: #22c55e;">getByName("app-1")</code> always returns the <strong>same instance</strong> (green box above).<br>
+          <code style="background: #27272a; padding: 0.2rem 0.4rem; border-radius: 4px; color: #f97316;">getByName("app-2")</code> always returns a <strong>different instance</strong> (orange box).
+        </div>
+      </div>
+    </div>
+    
     <!-- Key Concepts -->
     <div class="demo-section">
       <h2>Key Concepts</h2>
       <div class="concepts">
         <div class="concept-card">
-          <h3>🎯 Deterministic Routing</h3>
+          <h3>Deterministic Routing</h3>
           <p>
-            <code>idFromName("my-app")</code> always produces the same Durable Object ID.
-            This means the same appId always routes to the same container, no matter where
-            the request comes from.
+            <code>getByName("my-app")</code> always returns the same DO instance.
+            Same appId = same instance, globally.
           </p>
         </div>
         <div class="concept-card">
-          <h3>🔒 Complete Isolation</h3>
+          <h3>Complete Isolation</h3>
           <p>
-            Each appId gets its own container with separate filesystem, memory, and processes.
-            App A cannot access App B's data or resources.
+            Each instance has its own storage and container.
+            No shared state between instances.
           </p>
         </div>
         <div class="concept-card">
-          <h3>😴 Auto Sleep/Wake</h3>
+          <h3>Auto Sleep/Wake</h3>
           <p>
-            Containers automatically sleep after <code>sleepAfter</code> period (default: 10m).
-            They wake instantly on the next request. This saves costs!
+            Containers sleep after <code>sleepAfter</code> idle time.
+            Wake automatically on next request.
           </p>
         </div>
         <div class="concept-card">
-          <h3>💾 Persistent State</h3>
+          <h3>Persistent State</h3>
           <p>
-            Durable Objects have built-in SQLite storage. Container state is ephemeral,
-            but DO state persists across container restarts.
+            DO storage persists across container restarts.
+            Container state is ephemeral.
           </p>
         </div>
       </div>
